@@ -48,12 +48,18 @@ class ViewController: NSViewController {
         let nodeView = NSView(frame: frame)
         nodeView.wantsLayer = true
         nodeView.layer?.backgroundColor = NSColor.lightGray.cgColor
+        nodeView.layer?.cornerRadius = 4.0
         contentView.addSubview(nodeView)
         
         let text = NSTextField(wrappingLabelWithString: textDesc)
+        nodeView.addSubview(text)
+        text.alignment = .center
         text.wantsLayer = true
-        text.frame = frame
-        contentView.addSubview(text)
+        text.translatesAutoresizingMaskIntoConstraints = false
+        
+        contentView.addConstraints(
+            [NSLayoutConstraint(item: nodeView, attribute: .centerX, relatedBy: .equal, toItem: text, attribute: .centerX, multiplier: 1.0, constant: 0.0),
+             NSLayoutConstraint(item: nodeView, attribute: .centerY, relatedBy: .equal, toItem: text, attribute: .centerY, multiplier: 1.0, constant: 0.0)])
     }
     
     @objc
@@ -64,7 +70,11 @@ class ViewController: NSViewController {
         
         if (response == .alertFirstButtonReturn) {
             print("\(txt.stringValue)")
-            try! MindMapModel.shared.createMindMap(txt.stringValue)
+            do {
+                try MindMapModel.shared.createMindMap(txt.stringValue)
+            } catch {
+                errorAlert("create mind map error", "\(error)").runModal()
+            }
             
             redrawNodes()
         } else {
@@ -91,9 +101,37 @@ class ViewController: NSViewController {
         
         let desc = txt.stringValue
         
-        try! MindMapModel.shared.insertMode(desc, parentID)
+        do {
+            try MindMapModel.shared.insertMode(desc, parentID)
+        } catch {
+            errorAlert("insert node error", "\(error)").runModal()
+        }
         
         redrawNodes()
+    }
+    
+    @objc
+    func saveMindMap() {
+        let panel = NSSavePanel(contentRect: NSRect(x: 0, y: 0, width: 200, height: 150), styleMask: [.closable, .resizable], backing: .buffered, defer: true)
+        
+        panel.allowedFileTypes = ["mindmap"]
+        panel.nameFieldStringValue = "new-mind-map.mindmap"
+        panel.canCreateDirectories = true
+        
+        panel.begin { (response) in
+            if response == .OK {
+                do {
+                    if let url = panel.url {
+                        try MindMapModel.shared.saveMindMap(url)
+                    } else {
+                        self.errorAlert("save mind map error", "url is nil").runModal()
+                    }
+                } catch {
+                    self.errorAlert("save mind map error", "\(error)").runModal()
+                }
+            }
+        }
+        
     }
     
     private func inputAlert(_ title: String, _ information: String, _ defaultSring: String) -> (NSAlert, NSTextField) {
@@ -109,6 +147,15 @@ class ViewController: NSViewController {
         msg.accessoryView = txt
         
         return (msg, txt)
+    }
+    
+    private func errorAlert(_ title: String, _ information: String) -> NSAlert {
+        let msg = NSAlert()
+        msg.addButton(withTitle: "OK")      // 1st button
+        msg.messageText = title
+        msg.informativeText = information
+        
+        return msg
     }
 
 //    override var representedObject: Any? {

@@ -8,12 +8,36 @@
 
 import Foundation
 
-class Composite: Component {
+class Component: Codable {
     let id: Int
     let description: String
     
     private var parent: Component?
     private var children: [Component] = []
+    
+    enum CodingKeys: CodingKey {
+        case id
+        case description
+        case parent
+        case children
+    }
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        self.id = try container.decode(Int.self, forKey: .id)
+        self.description = try container.decode(String.self, forKey: .description)
+        self.parent = try container.decodeIfPresent(Component.self, forKey: .parent)
+        self.children = try container.decode([Component].self, forKey: .children)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(description, forKey: .description)
+        try container.encodeIfPresent(parent, forKey: .parent)
+        try container.encode(children, forKey: .children)
+    }
     
     init(id: Int, description: String) {
         self.id = id
@@ -33,14 +57,13 @@ class Composite: Component {
     }
 }
 
-class Root: Composite {
+class Root: Component {
     override func addSibling(_ node: Component) {
         preconditionFailure()
     }
 }
 
-typealias Node = Composite
-
+typealias Node = Component
 
 protocol NodeIDProviding {
     func nextID() -> Int
@@ -75,5 +98,22 @@ class NodeIDProvider: NodeIDProviding {
             let childMaxID = getMaxID(com)
             return childMaxID > maxID ? childMaxID : maxID
         }
+    }
+}
+
+class CompositeNodeSaver: NodeFileManager {
+    func load(from fileURL: URL) throws -> Component {
+        let decoder = JSONDecoder()
+        
+        let data = try Data(contentsOf: fileURL)
+        
+        return try decoder.decode(Component.self, from: data)
+    }
+    
+    func save(_ node: Component, to fileURL: URL) throws {
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(node)
+        
+        try data.write(to: fileURL)
     }
 }

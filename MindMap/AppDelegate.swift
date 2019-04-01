@@ -17,8 +17,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let nodeMaker = CompositeNodeMaker()
         let nodeIDProvider = NodeIDProvider()
+        let nodeFileManager = CompositeNodeSaver()
         nodeMaker.nodeIDProvider = nodeIDProvider
-        MindMapModel.shared.nodeMaker = nodeMaker  ///< TODO: Consider Load MindMap
+        MindMapModel.shared.nodeMaker = nodeMaker
+        MindMapModel.shared.nodeFileManager = nodeFileManager
         
         NSApplication.shared.mainMenu = makeMainMenu()
         
@@ -64,6 +66,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let fileMenu = NSMenu(title: "File")
         mainFileMenuItem.submenu = fileMenu
         fileMenu.addItem(withTitle: "New MindMap", action: #selector(ViewController.createMindMap), keyEquivalent: "n")
+        fileMenu.addItem(withTitle: "Save MindMap", action: #selector(ViewController.saveMindMap), keyEquivalent: "s")
         
         let nodeMenu = NSMenu(title: "Node")
         mainNodeMenuItem.submenu = nodeMenu

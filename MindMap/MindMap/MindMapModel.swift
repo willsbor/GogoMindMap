@@ -8,18 +8,23 @@
 
 import Foundation
 
-protocol Component {
-    var id: Int { get }
-    var description: String  { get }
-    
-    func addChild(_ node: Component)
-    func addSibling(_ node: Component)
-    func getChildren() -> [Component]
-    //    func getMap() //< for What
-}
+//protocol Component: Codable {
+//    var id: Int { get }
+//    var description: String  { get }
+//
+//    func addChild(_ node: Component)
+//    func addSibling(_ node: Component)
+//    func getChildren() -> [Component]
+//    //    func getMap() //< for What
+//}
 
 protocol NodeMaker {
     func createNode(_ desc: String) -> Component
+}
+
+protocol NodeFileManager {
+    func save(_ node: Component, to fileURL: URL) throws
+    func load(from fileURL: URL) throws -> Component
 }
 
 class MindMapModel {
@@ -33,6 +38,7 @@ class MindMapModel {
     static let shared = MindMapModel()
     
     var nodeMaker: NodeMaker! = nil
+    var nodeFileManager: NodeFileManager! = nil
     private(set) var root: Component?
     
     var selectedComponent: Component?
@@ -54,17 +60,13 @@ class MindMapModel {
         parentNode.addChild(newNode)
     }
     
-    func saveMindMap() throws {
-        if root == nil {
+    func saveMindMap(_ fileURL: URL) throws {
+        guard let root = root else {
             throw Errors.rootNotExist
         }
         
-        // TODO Save
+        try nodeFileManager.save(root, to: fileURL)
     }
-    
-//    func createRoot(_ desc: String) throws {
-//
-//    }
     
     private func findNode(by id: Int, _ node: Component?) -> Component? {
         guard let node = node else {
