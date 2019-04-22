@@ -20,6 +20,7 @@ import Foundation
 
 protocol NodeMaker {
     func createNode(_ desc: String) -> Component
+    func returnResource(_ comp: Component)
 }
 
 protocol NodeFileManager {
@@ -33,6 +34,7 @@ class MindMapModel {
         case hasRoot
         case parentIDNotExist
         case rootNotExist
+        case cantFindID(Int)
     }
     
     static let shared = MindMapModel()
@@ -51,13 +53,32 @@ class MindMapModel {
         root = nodeMaker.createNode(desc)
     }
     
-    func insertMode(_ desc: String, _ parentID: Int) throws {
+    func deleteMindMan() throws {
+        if root == nil {
+            throw Errors.rootNotExist
+        }
+        
+        root = nil
+    }
+    
+    @discardableResult
+    func insertMode(_ desc: String, _ parentID: Int) throws -> Component {
         guard let parentNode = findNode(by: parentID, root) else {
             throw Errors.parentIDNotExist
         }
         
         let newNode = nodeMaker.createNode(desc)
         parentNode.addChild(newNode)
+        return newNode
+    }
+    
+    func deleteNode(for id: Int) throws {
+        guard let node = findNode(by: id, root) else {
+            throw Errors.cantFindID(id)
+        }
+        
+        node.removeFromParent()
+        nodeMaker.returnResource(node)
     }
     
     func saveMindMap(_ fileURL: URL) throws {

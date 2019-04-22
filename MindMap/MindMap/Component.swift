@@ -12,7 +12,7 @@ class Component: Codable {
     let id: Int
     let description: String
     
-    private var parent: Component?
+    private(set) var parent: Component?
     private var children: [Component] = []
     
     enum CodingKeys: CodingKey {
@@ -48,12 +48,26 @@ class Component: Codable {
         children.append(node)
     }
     
+    func removeChild(_ node: Component) {
+        children.removeAll { $0 == node }
+    }
+    
+    func removeFromParent() {
+        parent?.removeChild(self)
+    }
+    
     func addSibling(_ node: Component) {
         parent?.addChild(node)
     }
     
     func getChildren() -> [Component] {
         return children
+    }
+}
+
+extension Component: Equatable {
+    static func == (lhs: Component, rhs: Component) -> Bool {
+        return lhs.id == rhs.id
     }
 }
 
@@ -67,6 +81,7 @@ typealias Node = Component
 
 protocol NodeIDProviding {
     func nextID() -> Int
+    func retainFreeID(_ freeID: Int)
 }
 
 class CompositeNodeMaker: NodeMaker {
@@ -75,16 +90,31 @@ class CompositeNodeMaker: NodeMaker {
     func createNode(_ desc: String) -> Component {
         return Node(id: nodeIDProvider.nextID(), description: desc)
     }
+    
+    func returnResource(_ comp: Component) {
+        /// TODO: recursive all Component
+        nodeIDProvider.retainFreeID(comp.id)
+    }
 }
 
 class NodeIDProvider: NodeIDProviding {
     private var currentMaxID = 0
+    private var freeIDs: [Int] = []
     
     func updateCurrentID(by component: Component?) {
         currentMaxID = getMaxID(component)
     }
     
+    func retainFreeID(_ freeID: Int) {
+        freeIDs.append(freeID)
+        freeIDs.sort()
+    }
+    
     func nextID() -> Int {
+        if !freeIDs.isEmpty {
+            return freeIDs.removeFirst()
+        }
+        
         currentMaxID = currentMaxID + 1
         return currentMaxID
     }

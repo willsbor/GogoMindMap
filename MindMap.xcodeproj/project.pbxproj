@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AB037056226CD04500A92C5D /* CommandManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB037055226CD04500A92C5D /* CommandManager.swift */; };
 		AB4E209122429E5700F43F27 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4E209022429E5700F43F27 /* AppDelegate.swift */; };
 		AB4E209322429E5700F43F27 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4E209222429E5700F43F27 /* ViewController.swift */; };
 		AB4E209522429E5A00F43F27 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB4E209422429E5A00F43F27 /* Assets.xcassets */; };
@@ -28,6 +29,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		AB037055226CD04500A92C5D /* CommandManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandManager.swift; sourceTree = "<group>"; };
 		AB4E208D22429E5700F43F27 /* MindMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MindMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB4E209022429E5700F43F27 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		AB4E209222429E5700F43F27 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -108,6 +110,7 @@
 			children = (
 				AB58E4C9224E73D90096F9F9 /* MindMapModel.swift */,
 				AB58E4CB2250F5450096F9F9 /* Component.swift */,
+				AB037055226CD04500A92C5D /* CommandManager.swift */,
 			);
 			path = MindMap;
 			sourceTree = "<group>";
@@ -218,6 +221,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB4E209322429E5700F43F27 /* ViewController.swift in Sources */,
+				AB037056226CD04500A92C5D /* CommandManager.swift in Sources */,
 				AB58E4CC2250F5450096F9F9 /* Component.swift in Sources */,
 				AB58E4CA224E73D90096F9F9 /* MindMapModel.swift in Sources */,
 				AB58E4CE22511FAE0096F9F9 /* MindMapApplication.swift in Sources */,

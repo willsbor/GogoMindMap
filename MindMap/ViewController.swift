@@ -8,7 +8,7 @@
 
 import Cocoa
 
-class ViewController: NSViewController {
+class ViewController: NSViewController, MainDrawPaper {
 
     @IBOutlet weak var contentView: NSView!
     
@@ -16,9 +16,11 @@ class ViewController: NSViewController {
         super.viewDidLoad()
 
         self.contentView.wantsLayer = true
+        
+        mainDrawPaper = self
     }
     
-    private func redrawNodes() {
+    func redrawNodes() {
         
         contentView.subviews.forEach { $0.removeFromSuperview() }
         
@@ -61,102 +63,6 @@ class ViewController: NSViewController {
             [NSLayoutConstraint(item: nodeView, attribute: .centerX, relatedBy: .equal, toItem: text, attribute: .centerX, multiplier: 1.0, constant: 0.0),
              NSLayoutConstraint(item: nodeView, attribute: .centerY, relatedBy: .equal, toItem: text, attribute: .centerY, multiplier: 1.0, constant: 0.0)])
     }
-    
-    @objc
-    func createMindMap() {
-        let (msg, txt) = inputAlert("input Description", "input Description for Root", "Root")
-        
-        let response: NSApplication.ModalResponse = msg.runModal()
-        
-        if (response == .alertFirstButtonReturn) {
-            print("\(txt.stringValue)")
-            do {
-                try MindMapModel.shared.createMindMap(txt.stringValue)
-            } catch {
-                errorAlert("create mind map error", "\(error)").runModal()
-            }
-            
-            redrawNodes()
-        } else {
-            print("no value")
-        }
-    }
-    
-    @objc
-    func insertNode() {
-        var (msg, txt) = inputAlert("input Parent Node Id", "Integer!!", "0")
-        var response: NSApplication.ModalResponse = msg.runModal()
-        guard response == .alertFirstButtonReturn else {
-            print("no value")
-            return
-        }
-        let parentID: Int = txt.integerValue
-        
-        (msg, txt) = inputAlert("input Description", "input Description for Root", "")
-        response = msg.runModal()
-        guard response == .alertFirstButtonReturn else {
-            print("no value")
-            return
-        }
-        
-        let desc = txt.stringValue
-        
-        do {
-            try MindMapModel.shared.insertMode(desc, parentID)
-        } catch {
-            errorAlert("insert node error", "\(error)").runModal()
-        }
-        
-        redrawNodes()
-    }
-    
-    @objc
-    func saveMindMap() {
-        let panel = NSSavePanel(contentRect: NSRect(x: 0, y: 0, width: 200, height: 150), styleMask: [.closable, .resizable], backing: .buffered, defer: true)
-        
-        panel.allowedFileTypes = ["mindmap"]
-        panel.nameFieldStringValue = "new-mind-map.mindmap"
-        panel.canCreateDirectories = true
-        
-        panel.begin { (response) in
-            if response == .OK {
-                do {
-                    if let url = panel.url {
-                        try MindMapModel.shared.saveMindMap(url)
-                    } else {
-                        self.errorAlert("save mind map error", "url is nil").runModal()
-                    }
-                } catch {
-                    self.errorAlert("save mind map error", "\(error)").runModal()
-                }
-            }
-        }
-        
-    }
-    
-    private func inputAlert(_ title: String, _ information: String, _ defaultSring: String) -> (NSAlert, NSTextField) {
-        let msg = NSAlert()
-        msg.addButton(withTitle: "OK")      // 1st button
-        msg.addButton(withTitle: "Cancel")  // 2nd button
-        msg.messageText = title
-        msg.informativeText = information
-        
-        let txt = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
-        txt.stringValue = defaultSring
-        
-        msg.accessoryView = txt
-        
-        return (msg, txt)
-    }
-    
-    private func errorAlert(_ title: String, _ information: String) -> NSAlert {
-        let msg = NSAlert()
-        msg.addButton(withTitle: "OK")      // 1st button
-        msg.messageText = title
-        msg.informativeText = information
-        
-        return msg
-    }
 
 //    override var representedObject: Any? {
 //        didSet {
@@ -169,4 +75,3 @@ class ViewController: NSViewController {
 
 
 }
-
