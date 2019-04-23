@@ -21,6 +21,9 @@ import Foundation
 protocol NodeMaker {
     func createNode(_ desc: String) -> Component
     func returnResource(_ comp: Component)
+    func requestResource(for comp: Component) throws
+    
+    func resetResource(_ comp: Component)
 }
 
 protocol NodeFileManager {
@@ -72,13 +75,29 @@ class MindMapModel {
         return newNode
     }
     
-    func deleteNode(for id: Int) throws {
+    @discardableResult
+    func deleteNode(for id: Int) throws -> Component {
         guard let node = findNode(by: id, root) else {
             throw Errors.cantFindID(id)
         }
         
         node.removeFromParent()
         nodeMaker.returnResource(node)
+        
+        return node
+    }
+    
+    func appendNode(_ freedomNodes: Component, at parentID: Int) throws {
+        guard let parentNode = findNode(by: parentID, root) else {
+            throw Errors.parentIDNotExist
+        }
+        
+        try nodeMaker.requestResource(for: freedomNodes)
+        parentNode.addChild(freedomNodes)
+    }
+    
+    func getNode(by id: Int) -> Component? {
+        return findNode(by: id, root)
     }
     
     func saveMindMap(_ fileURL: URL) throws {
@@ -87,6 +106,11 @@ class MindMapModel {
         }
         
         try nodeFileManager.save(root, to: fileURL)
+    }
+    
+    func loadMindMap(_ fileURL: URL) throws {
+        root = try nodeFileManager.load(from: fileURL)
+        nodeMaker.resetResource(root!)
     }
     
     private func findNode(by id: Int, _ node: Component?) -> Component? {

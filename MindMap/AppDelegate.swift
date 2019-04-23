@@ -77,10 +77,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         mainFileMenuItem.submenu = fileMenu
         fileMenu.addItem(withTitle: "New MindMap", action: #selector(AppDelegate.createMindMap), keyEquivalent: "n")
         fileMenu.addItem(withTitle: "Save MindMap", action: #selector(AppDelegate.saveMindMap), keyEquivalent: "s")
+        fileMenu.addItem(withTitle: "Load MindMap", action: #selector(AppDelegate.loadMindMap), keyEquivalent: "l")
         
         let nodeMenu = NSMenu(title: "Node")
         mainNodeMenuItem.submenu = nodeMenu
         nodeMenu.addItem(withTitle: "insert a Node", action: #selector(AppDelegate.insertNode), keyEquivalent: "i")
+        nodeMenu.addItem(withTitle: "edit a Node", action: #selector(AppDelegate.editNode), keyEquivalent: "e")
+        nodeMenu.addItem(withTitle: "delete a Node", action: #selector(AppDelegate.deleteNode), keyEquivalent: "d")
         
         let actionMenu = NSMenu(title: "Action")
         mainActionMenuItem.submenu = actionMenu
@@ -112,7 +115,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc
     func insertNode() {
-        var (msg, txt) = inputAlert("input Parent Node Id", "Integer!!", "0")
+        var (msg, txt) = inputAlert("input Parent Node Id", "Integer!!", "")
         var response: NSApplication.ModalResponse = msg.runModal()
         guard response == .alertFirstButtonReturn else {
             print("no value")
@@ -139,6 +142,68 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc
+    func editNode() {
+        var (msg, txt) = inputAlert("input Target Node Id", "Integer!!", "")
+        var response: NSApplication.ModalResponse = msg.runModal()
+        guard response == .alertFirstButtonReturn else {
+            print("no value")
+            return
+        }
+        let targetID: Int = txt.integerValue
+        
+        guard let node = MindMapModel.shared.getNode(by: targetID) else {
+            errorAlert("Warning", "Can not find id == \(targetID)").runModal()
+            return
+        }
+        
+        (msg, txt) = inputAlert("input New Description", "input Description for Root", node.description)
+        response = msg.runModal()
+        guard response == .alertFirstButtonReturn else {
+            print("no value")
+            return
+        }
+        
+        let desc = txt.stringValue
+        
+        if desc == node.description {
+            errorAlert("Warning", "Description is no changed").runModal()
+            return
+        }
+        
+        do {
+            try commandManager.execute(EditNodeCommand(newMetaDescription: desc, targetID: targetID))
+        } catch {
+            errorAlert("create failed", "\(error)").runModal()
+        }
+        
+        mainDrawPaper?.redrawNodes()
+    }
+    
+    @objc
+    func deleteNode() {
+        let (msg, txt) = inputAlert("input Target Node Id", "Integer!!", "")
+        let response: NSApplication.ModalResponse = msg.runModal()
+        guard response == .alertFirstButtonReturn else {
+            print("no value")
+            return
+        }
+        let targetID: Int = txt.integerValue
+        
+        guard MindMapModel.shared.getNode(by: targetID) != nil else {
+            errorAlert("Warning", "Can not find id == \(targetID)").runModal()
+            return
+        }
+        
+        do {
+            try commandManager.execute(DeleteNodeCommand(targetID: targetID))
+        } catch {
+            errorAlert("create failed", "\(error)").runModal()
+        }
+        
+        mainDrawPaper?.redrawNodes()
+    }
+    
+    @objc
     func saveMindMap() {
         let panel = NSSavePanel(contentRect: NSRect(x: 0, y: 0, width: 200, height: 150), styleMask: [.closable, .resizable], backing: .buffered, defer: true)
         
@@ -156,6 +221,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 } catch {
                     self.errorAlert("save mind map error", "\(error)").runModal()
+                }
+            }
+        }
+    }
+    
+    @objc
+    func loadMindMap() {
+        let panel = NSOpenPanel(contentRect: NSRect(x: 0, y: 0, width: 200, height: 150), styleMask: [.closable, .resizable], backing: .buffered, defer: true)
+        
+        panel.allowsMultipleSelection = false
+        panel.allowedFileTypes = ["mindmap"]
+        
+        panel.begin { (response) in
+            guard response == .OK else { return }
+            
+            DispatchQueue.main.async {
+                do {
+                    if let url = panel.url {
+                        try MindMapModel.shared.loadMindMap(url)
+                        mainDrawPaper?.redrawNodes()
+                    } else {
+                        self.errorAlert("load mind map error", "url is nil").runModal()
+                    }
+                } catch {
+                    self.errorAlert("load mind map error", "\(error)").runModal()
                 }
             }
         }
@@ -246,3 +336,80 @@ class InsertNodeCommand: Command {
     }
 }
 
+class EditNodeCommand: Command {
+    
+    let newMetaDescription: String
+    let targetID: Int
+    private var oriDescription: String?
+    
+    init(newMetaDescription: String, targetID: Int) {
+        self.newMetaDescription = newMetaDescription
+        self.targetID = targetID
+    }
+    
+    func execute() throws {
+        guard let node = MindMapModel.shared.getNode(by: targetID) else {
+            return
+        }
+        
+        if oriDescription == nil {
+            oriDescription = node.description
+        }
+        
+        node.description = newMetaDescription
+    }
+    
+    func unexecute() throws {
+        guard let node = MindMapModel.shared.getNode(by: targetID) else {
+            return
+        }
+        
+        guard let oriDescription = oriDescription else {
+            return
+        }
+        
+        node.description = oriDescription
+    }
+    
+}
+
+class DeleteNodeCommand: Command {
+    
+    let targetID: Int
+    
+    private var parentID: Int?
+    private var removedNodes: Component?
+    
+    init(targetID: Int) {
+        self.targetID = targetID
+    }
+    
+    func execute() throws {
+        guard let node = MindMapModel.shared.getNode(by: targetID) else {
+            return
+        }
+        
+        if parentID == nil {
+            parentID = node.parent?.id
+        }
+        if removedNodes == nil {
+            removedNodes = try MindMapModel.shared.deleteNode(for: targetID)
+        }
+    }
+    
+    func unexecute() throws {
+        guard let parentID = parentID else {
+            return
+        }
+        
+        guard let removedNodes = removedNodes else {
+            return
+        }
+        
+        try MindMapModel.shared.appendNode(removedNodes, at: parentID)
+        self.parentID = nil
+        self.removedNodes = nil
+    }
+    
+
+}

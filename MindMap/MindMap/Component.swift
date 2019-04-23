@@ -10,7 +10,7 @@ import Foundation
 
 class Component: Codable {
     let id: Int
-    let description: String
+    var description: String
     
     private(set) var parent: Component?
     private var children: [Component] = []
@@ -27,15 +27,18 @@ class Component: Codable {
 
         self.id = try container.decode(Int.self, forKey: .id)
         self.description = try container.decode(String.self, forKey: .description)
-        self.parent = try container.decodeIfPresent(Component.self, forKey: .parent)
+//        self.parent = try container.decodeIfPresent(Component.self, forKey: .parent)
         self.children = try container.decode([Component].self, forKey: .children)
+        self.children.forEach { (comp) in
+            comp.parent = self
+        }
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(description, forKey: .description)
-        try container.encodeIfPresent(parent, forKey: .parent)
+//        try container.encodeIfPresent(parent, forKey: .parent)
         try container.encode(children, forKey: .children)
     }
     
@@ -46,10 +49,12 @@ class Component: Codable {
     
     func addChild(_ node: Component) {
         children.append(node)
+        node.parent = self
     }
     
     func removeChild(_ node: Component) {
         children.removeAll { $0 == node }
+        node.parent = nil
     }
     
     func removeFromParent() {
@@ -82,6 +87,8 @@ typealias Node = Component
 protocol NodeIDProviding {
     func nextID() -> Int
     func retainFreeID(_ freeID: Int)
+    func requestSpecificID(_ specificIDs: [Int]) throws
+    func resetCurrentIDs(by ids: [Int])
 }
 
 class CompositeNodeMaker: NodeMaker {
@@ -92,22 +99,86 @@ class CompositeNodeMaker: NodeMaker {
     }
     
     func returnResource(_ comp: Component) {
-        /// TODO: recursive all Component
         nodeIDProvider.retainFreeID(comp.id)
+        for c in comp.getChildren() {
+            returnResource(c)
+        }
+    }
+    
+    func requestResource(for comp: Component) throws {
+        let ids = getAllIDs(comp)
+        try nodeIDProvider.requestSpecificID(ids)
+    }
+    
+    func resetResource(_ comp: Component) {
+        let ids = getAllIDs(comp)
+        nodeIDProvider.resetCurrentIDs(by: ids)
+    }
+    
+    private func getAllIDs(_ comp: Component) -> [Int] {
+        var result = [comp.id]
+        for c in comp.getChildren() {
+            result.append(contentsOf: getAllIDs(c))
+        }
+        return result
     }
 }
 
 class NodeIDProvider: NodeIDProviding {
+    
+    enum Errors: Error {
+        case canNotAcceptSpecificIDs
+    }
+    
     private var currentMaxID = 0
     private var freeIDs: [Int] = []
     
-    func updateCurrentID(by component: Component?) {
-        currentMaxID = getMaxID(component)
+    func resetCurrentIDs(by ids: [Int]) {
+        var ids = ids
+        ids.sort()
+        currentMaxID = ids.last ?? 0
+        for i in 1...currentMaxID {
+            if !ids.contains(i) {
+                freeIDs.append(i)
+            }
+        }
     }
     
     func retainFreeID(_ freeID: Int) {
         freeIDs.append(freeID)
         freeIDs.sort()
+    }
+    
+    func requestSpecificID(_ specificIDs: [Int]) throws {
+        var newFreeIDs = freeIDs
+        
+        let check = specificIDs.reduce(true) { (last, id) -> Bool in
+            if last == false {
+                return false
+            }
+            
+            if newFreeIDs.contains(id) {
+                newFreeIDs.removeAll(where: {$0 == id})
+                return true
+            } else if currentMaxID < id {
+                if id - 1 >= currentMaxID + 1 {
+                    for i in (currentMaxID + 1)...(id - 1) {
+                        newFreeIDs.append(i)
+                    }
+                }
+                currentMaxID = id
+                
+                return true
+            } else {
+                return false
+            }
+        }
+        
+        if check {
+            freeIDs = newFreeIDs
+        } else {
+            throw Errors.canNotAcceptSpecificIDs
+        }
     }
     
     func nextID() -> Int {
